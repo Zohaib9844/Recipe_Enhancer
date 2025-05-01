@@ -1,0 +1,11 @@
+
+@import "tailwindcss";
+
+/* Only keep essential base styles */
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove all other styles that conflict with Tailwind */
