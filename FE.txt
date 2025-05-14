@@ -1,3 +1,4 @@
+Form:
 export default function Form(props){
 
     const handleLogin = () => {
@@ -41,3 +42,73 @@ export default function Form(props){
         </div>
     );
 }
+
+
+
+
+
+
+
+import Footer from '../Components/HeadFoot/Footer';
+import Form from '../Components/LSPage/Form'
+
+
+
+export default function LoginView(){
+    return(
+        <div className='w-full min-h-screen flex flex-col bg-gray-100'>
+            <div className="flex-grow flex items-center justify-center p-6">
+                <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
+                    <Form formType="login"/>
+                </div>
+            </div>
+            <Footer/>
+        </div>
+    );
+}
+
+app.jsx:
+import { useState, useEffect } from 'react'
+import './App.css'
+import SignupView from './Views/SignupView';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import LoginView from './Views/LoginView';
+import HomeView from './Views/HomeView';
+import AddRecipe from './Views/AddRecipeView';
+import RecipeDetailView from './Views/RecipeDetailView';
+import ReviewView from './Views/ReviewsView';
+import axios from 'axios';  
+
+function App() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    axios.get('/auth/api/auth/me', { withCredentials: true })
+      .then(res => {
+        setUser(res.data);
+      })
+      .catch(err => {
+        console.log(err);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      });
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginView/>}/>
+        <Route path="/signup" element={<SignupView/>}/>
+        <Route path='/addrecipe' element={<AddRecipe/>}/>
+        <Route path='/showrecipe/:id' element={<RecipeDetailView/>}/>
+        <Route path='/reviews/:id' element={<ReviewView/>}/>
+        <Route path="/" element={<HomeView/>}/>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App
+
+

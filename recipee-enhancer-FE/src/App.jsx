@@ -7,12 +7,12 @@ import HomeView from './Views/HomeView';
 import AddRecipe from './Views/AddRecipeView';
 import RecipeDetailView from './Views/RecipeDetailView';
 import ReviewView from './Views/ReviewsView';
-import axios from 'axios';
+import axios from 'axios';  
 
 function App() {
   const [user, setUser] = useState(null);
   useEffect(() => {
-    axios.get('/auth/api/auth/me', { withCredentials: true })
+    axios.get('api/auth/me', { withCredentials: true })
       .then(res => {
         setUser(res.data);
       })
