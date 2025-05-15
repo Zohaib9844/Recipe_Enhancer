@@ -1,249 +1,301 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
+import Navbar from "../Components/HeadFoot/Navbar";
+import Footer from "../Components/HeadFoot/Footer";
 
 export default function AddRecipe() {
-    const BACKEND_URL = 'http://127.0.0.1:3000';
-    const navigate = useNavigate();
     const location = useLocation();
-    const isUpdating = location.state?.id !== undefined;
+    const navigate = useNavigate();
+    const BACKEND_URL = 'http://127.0.0.1:3000';
     
-    // State for all form inputs
-    const [recipeData, setRecipeData] = useState({
-        name: '',
-        userId: '',
-        description: '',
-        prepTime: '',
-        cookTime: '',
-        ingredients: '',
-        instructions: '',
-        r_picture: ""
+    const [recipeId, setRecipeId] = useState(null);
+    const [recipe, setRecipe] = useState({
+        name: "",
+        description: "",
+        prepTime: "",
+        cookTime: "",
+        instructions: "",
+        ingredients: "",
+        r_picture: null
     });
+    
+    const [previewImage, setPreviewImage] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-    // Initialize form with recipe data if updating
+    // Check if this is an edit by looking for id in location state
     useEffect(() => {
-        if (location.state?.id) {
-            axios.get(`http://127.0.0.1:3000/api/get_recipe/${location.state.id}`)
-                .then(response => {
-                    setRecipeData(prev => ({
-                        ...prev,
-                        ...response.data,
-                        r_picture: response.data.r_picture || ""  // keep as string, only used for preview
-                    }));
-                })
-                .catch(error => {
-                    console.error('Error fetching recipe:', error);
-                });
+        const id = location.state?.id;
+        console.log("Recipe ID from state:", id);
+        
+        if (id) {
+            setRecipeId(id);
+            setIsEditing(true);
+            fetchRecipe(id);
         }
-    }, [location.state?.id]);
+    }, [location.state]);
 
-    // Handle input changes
-    const handleInputChange = (e) => {
+    const fetchRecipe = async (id) => {
+        setLoading(true);
+        try {
+            console.log(`Fetching recipe with ID: ${id}`);
+            const response = await axios.get(`${BACKEND_URL}/api/get_recipe/${id}`);
+            console.log("Recipe data:", response.data);
+            
+            const recipeData = response.data;
+            setRecipe({
+                name: recipeData.name || "",
+                description: recipeData.description || "",
+                prepTime: recipeData.prepTime || "",
+                cookTime: recipeData.cookTime || "",
+                instructions: recipeData.instructions || "",
+                ingredients: recipeData.ingredients || "",
+                r_picture: null // Don't set the actual file, just the preview
+            });
+            
+            if (recipeData.r_picture) {
+                setPreviewImage(`${BACKEND_URL}/${recipeData.r_picture}`);
+            }
+            
+        } catch (error) {
+            console.error("Error fetching recipe:", error);
+            setError("Failed to load recipe details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleChange = (e) => {
         const { name, value } = e.target;
-        setRecipeData(prev => ({
+        setRecipe(prev => ({
             ...prev,
             [name]: value
         }));
     };
 
-    // Handle form submission
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setRecipe(prev => ({
+                ...prev,
+                r_picture: file
+            }));
+            
+            // Create preview URL
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError("");
         
-        const formData = new FormData();
-        formData.append('name', recipeData.name);
-        formData.append('description', recipeData.description);
-        formData.append('prepTime', recipeData.prepTime);
-        formData.append('cookTime', recipeData.cookTime);
-        formData.append('ingredients', recipeData.ingredients);
-        formData.append('instructions', recipeData.instructions);
-        if (recipeData.r_picture instanceof File) {
-            formData.append('r_picture', recipeData.r_picture);
-        }
         try {
-            if (isUpdating) {
-                // If updating, send PUT request with recipe ID
-                await axios.put(`http://127.0.0.1:3000/api/update_recipe/${location.state.id}`, formData, {
+            const formData = new FormData();
+            
+            // Add all recipe fields to formData
+            Object.keys(recipe).forEach(key => {
+                if (key === 'r_picture' && recipe[key] !== null) {
+                    formData.append(key, recipe[key]);
+                } else if (key !== 'r_picture') {
+                    formData.append(key, recipe[key]);
+                }
+            });
+            
+            let response;
+            
+            if (isEditing && recipeId) {
+                console.log(`Updating recipe with ID: ${recipeId}`);
+                // Make sure to use the correct endpoint path
+                response = await axios.put(`${BACKEND_URL}/api/update_recipies/${recipeId}`, formData, {
                     headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    withCredentials: true
                 });
+                console.log("Update response:", response.data);
             } else {
-                // If creating new, send POST request
-                const response = await axios.post(
-                    'http://127.0.0.1:3000/api/add_recipe', 
-                    formData, 
-                    {
-                        headers: {
-                            'Content-Type': 'multipart/form-data',
-                        }
-                    }
-                );
+                console.log("Creating new recipe");
+                response = await axios.post(`${BACKEND_URL}/api/add_recipe`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    withCredentials: true
+                });
+                console.log("Create response:", response.data);
             }
-            navigate('/'); // Redirect to home page after successful addition/update
+            
+            // Navigate back to home page
+            navigate("/");
+            
         } catch (error) {
-            console.error('Error saving recipe:', error);
+            console.error("Error saving recipe:", error);
+            setError(`Failed to ${isEditing ? 'update' : 'create'} recipe: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-                    {isUpdating ? 'Update Recipe' : 'Create New Recipe'}
-                </h2>
+        <div className="min-h-screen flex flex-col bg-gray-50">
+            <Navbar isRecipePage={true} />
+            
+            <main className="flex-grow container mx-auto px-4 py-8 max-w-3xl">
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">{isEditing ? "Edit Recipe" : "Add New Recipe"}</h1>
                 
-                <form className="space-y-6" onSubmit={handleSubmit}>
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+                        <p>{error}</p>
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="col-span-full">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="name">
                                 Recipe Name
                             </label>
-                            <input 
-                                type="text" 
-                                name="name" 
+                            <input
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                type="text"
                                 id="name"
-                                value={recipeData.name}
-                                onChange={handleInputChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                placeholder="Enter recipe name"
+                                name="name"
+                                value={recipe.name}
+                                onChange={handleChange}
                                 required
                             />
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="prepTime" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Prep Time (minutes)
-                                </label>
-                                <input 
-                                    type="number" 
-                                    name="prepTime" 
-                                    id="prepTime"
-                                    value={recipeData.prepTime}
-                                    onChange={handleInputChange}
-                                    min="0"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                    placeholder="30"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="cookTime" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Cook Time (minutes)
-                                </label>
-                                <input 
-                                    type="number" 
-                                    name="cookTime" 
-                                    id="cookTime"
-                                    value={recipeData.cookTime}
-                                    onChange={handleInputChange}
-                                    min="0"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                    placeholder="45"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                        
+                        <div className="col-span-full">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="description">
                                 Description
                             </label>
-                            <textarea 
-                                name="description" 
+                            <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 id="description"
-                                value={recipeData.description}
-                                onChange={handleInputChange}
+                                name="description"
                                 rows="3"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                placeholder="Write a brief description of your recipe"
-                                required
+                                value={recipe.description}
+                                onChange={handleChange}
                             />
                         </div>
-
+                        
                         <div>
-                            <label htmlFor="ingredients" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="prepTime">
+                                Preparation Time
+                            </label>
+                            <input
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                type="text"
+                                id="prepTime"
+                                name="prepTime"
+                                value={recipe.prepTime}
+                                onChange={handleChange}
+                                required
+                                placeholder="e.g. 15 minutes"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="cookTime">
+                                Cooking Time
+                            </label>
+                            <input
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                type="text"
+                                id="cookTime"
+                                name="cookTime"
+                                value={recipe.cookTime}
+                                onChange={handleChange}
+                                required
+                                placeholder="e.g. 30 minutes"
+                            />
+                        </div>
+                        
+                        <div className="col-span-full">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="ingredients">
                                 Ingredients
                             </label>
-                            <textarea 
-                                name="ingredients" 
+                            <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 id="ingredients"
-                                value={recipeData.ingredients}
-                                onChange={handleInputChange}
-                                rows="4"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                placeholder="List your ingredients (one per line)"
+                                name="ingredients"
+                                rows="6"
+                                value={recipe.ingredients}
+                                onChange={handleChange}
                                 required
+                                placeholder="Enter each ingredient on a new line"
                             />
                         </div>
-
-                        <div>
-                            <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-2">
+                        
+                        <div className="col-span-full">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="instructions">
                                 Instructions
                             </label>
-                            <textarea 
-                                name="instructions" 
+                            <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 id="instructions"
-                                value={recipeData.instructions}
-                                onChange={handleInputChange}
-                                rows="6"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                placeholder="Write step-by-step instructions"
+                                name="instructions"
+                                rows="8"
+                                value={recipe.instructions}
+                                onChange={handleChange}
                                 required
+                                placeholder="Enter step-by-step instructions"
                             />
                         </div>
-
-                        <div>
-                        {recipeData.r_picture && (
-                                <img 
-                                src={
-                                  recipeData.r_picture instanceof File
-                                    ? URL.createObjectURL(recipeData.r_picture)
-                                    : `${BACKEND_URL}/${recipeData.r_picture}`
-                                }
-                              />
-                              
-                            )}
-
-
-                            <label htmlFor="r_picture" className="block text-sm font-medium text-gray-700 mb-2">
+                        
+                        <div className="col-span-full">
+                            <label className="block text-gray-700 font-medium mb-2" htmlFor="r_picture">
                                 Recipe Image
                             </label>
-                            <input 
+                            <input
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 type="file"
-                                name="r_picture"
                                 id="r_picture"
+                                name="r_picture"
                                 accept="image/*"
-                                onChange={(e) => setRecipeData(prev => ({
-                                    ...prev,
-                                    r_picture: e.target.files[0]
-                                }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                onChange={handleImageChange}
                             />
+                            {previewImage && (
+                                <div className="mt-4">
+                                    <p className="text-sm text-gray-600 mb-2">Image Preview:</p>
+                                    <img 
+                                        src={previewImage} 
+                                        alt="Recipe preview" 
+                                        className="w-full max-h-64 object-cover rounded-md"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
-
-                    <div className="flex items-center justify-end space-x-4 pt-6">
-                        <button 
+                    
+                    <div className="mt-8 flex justify-end space-x-4">
+                        <button
                             type="button"
                             onClick={() => navigate('/')}
-                            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
                         >
                             Cancel
                         </button>
-                        <button 
+                        <button
                             type="submit"
-                            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+                            disabled={loading}
+                            className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                            </svg>
-                            {isUpdating ? 'Update Recipe' : 'Add Recipe'}
+                            {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Recipe' : 'Save Recipe')}
                         </button>
                     </div>
                 </form>
-            </div>
+            </main>
+            
+            <Footer />
         </div>
     );
 }

@@ -1,4 +1,3 @@
-// app.js - UPDATED VERSION
 require('dotenv').config({ debug: true })
 const express = require('express');
 const mongoose = require('mongoose');
@@ -16,16 +15,19 @@ const MongoDBStore = require('connect-mongodb-session')(session);
 const passport = require('passport');
 
 const PORT = process.env.PORT || 3000;
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
-// Apply security middleware early
+// Apply security middleware early, but configure it to allow image loading
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", "http://localhost:5173"],
+      connectSrc: ["'self'", CLIENT_URL],
+      imgSrc: ["'self'", "data:", CLIENT_URL], // Allow images from frontend domain
       // Add other directives as needed for your application
     }
-  }
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" } // This is key for image sharing
 }));
 
 // Configure rate limiting
@@ -44,9 +46,9 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("DB connected"))
   .catch(err => console.log(err));
 
-// Configure CORS properly
+// Configure CORS properly - must come before routes
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: CLIENT_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -86,6 +88,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Serve static files - CORS-enabled
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => res.send("API is running"));

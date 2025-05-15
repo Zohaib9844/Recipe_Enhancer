@@ -11,17 +11,23 @@ import axios from 'axios';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    axios.get('api/auth/me', { withCredentials: true })
-      .then(res => {
-        setUser(res.data);
-      })
-      .catch(err => {
-        console.log(err);
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      });
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/api/auth/me', {
+          withCredentials: true,
+        });
+        setUser(response.data);
+      } catch (error) {
+        console.log("Not authenticated");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
   }, []);
 
   return (
@@ -32,7 +38,7 @@ function App() {
         <Route path='/addrecipe' element={<AddRecipe/>}/>
         <Route path='/showrecipe/:id' element={<RecipeDetailView/>}/>
         <Route path='/reviews/:id' element={<ReviewView/>}/>
-        <Route path="/" element={<HomeView/>}/>
+        <Route path="/" element={<HomeView user={user} loading={loading}/>}/>
       </Routes>
     </BrowserRouter>
   );

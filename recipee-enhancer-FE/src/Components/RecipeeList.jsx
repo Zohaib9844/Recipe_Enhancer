@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from 'axios';
 import { useEffect } from "react";
 
-export default function RecipeList({ Recipies = [], onDelete }) {
+export default function RecipeList({ Recipies = [], onDelete, user }) {
     const BACKEND_URL = 'http://127.0.0.1:3000';
     const navigate = useNavigate();
 
@@ -12,7 +12,7 @@ export default function RecipeList({ Recipies = [], onDelete }) {
 
     // Function to check reviewCounter and trigger AI modify
     const checkAndModifyRecipe = async (recipe) => {
-        if (recipe.reviewCounter >= 3) {
+        if (recipe.reviewCounter && recipe.reviewCounter >= 3) {
             try {
                 // Fetch reviews for the recipe
                 const reviewsResponse = await axios.get(`${BACKEND_URL}/review/get_reviews/${recipe._id}`);
@@ -36,9 +36,11 @@ export default function RecipeList({ Recipies = [], onDelete }) {
 
     // Check each recipe when the component mounts or when the recipes change
     useEffect(() => {
-        Recipies.forEach(recipe => {
-            checkAndModifyRecipe(recipe);
-        });
+        if (Recipies && Recipies.length > 0) {
+            Recipies.forEach(recipe => {
+                if (recipe) checkAndModifyRecipe(recipe);
+            });
+        }
     }, [Recipies]);
 
     return (
@@ -47,13 +49,25 @@ export default function RecipeList({ Recipies = [], onDelete }) {
                 <div key={recipe._id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                     <Link to={`/showrecipe/${recipe._id}`}>
                         <div className="relative h-48 w-full">
-                            <img 
-                                src={recipe.r_picture ? `${BACKEND_URL}/${recipe.r_picture}` : "https://placehold.co/400x300"}
-                                alt={recipe.name}
-                                className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-4 left-4 bg-white px=2 py-1 rounded-full text-sm font-medium text-gray-600">
-                                #{recipe.id}
+                            {recipe.r_picture ? (
+                                <img 
+                                    src={`${BACKEND_URL}/${recipe.r_picture}`}
+                                    alt={recipe.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        console.log("Image failed to load:", e);
+                                        e.target.src = "https://placehold.co/400x300";
+                                    }}
+                                />
+                            ) : (
+                                <img 
+                                    src="https://placehold.co/400x300"
+                                    alt={recipe.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            )}
+                            <div className="absolute top-4 left-4 bg-white px-2 py-1 rounded-full text-sm font-medium text-gray-600">
+                                #{recipe._id.substring(0, 6)}
                             </div>
                         </div>
                     </Link>
@@ -70,17 +84,19 @@ export default function RecipeList({ Recipies = [], onDelete }) {
                         </p>
                         
                         <div className="flex items-center justify-between">
-                            <button 
-                                className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-300"
-                                onClick={() => navigate(`/reviews/${recipe._id}`)}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="CurrentColor">
-                                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                </svg>
-                                Reviews
-                            </button>
+                            {user && (
+                                <button 
+                                    className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-300"
+                                    onClick={() => navigate(`/reviews/${recipe._id}`)}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="CurrentColor">
+                                        <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                    </svg>
+                                    Reviews
+                                </button>
+                            )}
                             
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
                                 <button 
                                     className="text-blue-600 hover:text-blue-800 transition-colors duration-300"
                                     onClick={() => handleUpdate(recipe._id)}
@@ -93,7 +109,7 @@ export default function RecipeList({ Recipies = [], onDelete }) {
                                     className="text-red-600 hover:text-red-800 transition-colors duration-300"
                                     onClick={() => onDelete(recipe._id)}
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/ssvg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
@@ -109,7 +125,10 @@ export default function RecipeList({ Recipies = [], onDelete }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                     <p className="text-gray-500 text-lg">No recipes found</p>
-                    <button className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-300">
+                    <button 
+                        className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-300"
+                        onClick={() => navigate('/addrecipe')}
+                    >
                         Add Your First Recipe
                     </button>
                 </div>
