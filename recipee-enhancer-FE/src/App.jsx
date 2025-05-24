@@ -8,6 +8,7 @@ import AddRecipe from './Views/AddRecipeView';
 import RecipeDetailView from './Views/RecipeDetailView';
 import ReviewView from './Views/ReviewsView';
 import axios from 'axios';  
+import ProfileView from './Views/ProfileView';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -38,6 +39,7 @@ function App() {
         <Route path='/addrecipe' element={<AddRecipe/>}/>
         <Route path='/showrecipe/:id' element={<RecipeDetailView/>}/>
         <Route path='/reviews/:id' element={<ReviewView/>}/>
+        <Route path="/profile" element={<ProfileView user={user} loading={loading} />} />
         <Route path="/" element={<HomeView user={user} loading={loading}/>}/>
       </Routes>
     </BrowserRouter>

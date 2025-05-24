@@ -2,29 +2,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function Navbar({ isRecipePage, onAddClick }) {
+export default function Navbar({ isRecipePage, onAddClick, user, loading }) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const response = await axios.get("http://localhost:3000/api/auth/me", {
-                    withCredentials: true,
-                });
-                setUser(response.data);
-            } catch (error) {
-                console.log("Not authenticated");
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchUser();
-    }, []);
 
     const handleAddClick = () => {
         if (isRecipePage) {
@@ -87,7 +67,9 @@ export default function Navbar({ isRecipePage, onAddClick }) {
                                 <div className="w-8 h-8 rounded-full bg-gray-300 animate-pulse"></div>
                             ) : user ? (
                                 <div className="flex items-center space-x-3">
-                                    <span className="text-gray-600">{user.name}</span>
+                                    <Link to="/profile" className="text-gray-600 hover:text-gray-800">
+                                        {user.name}
+                                    </Link>
                                     <img 
                                         src={user.profilePicture || "/default-avatar.png"} 
                                         alt="User avatar" 
