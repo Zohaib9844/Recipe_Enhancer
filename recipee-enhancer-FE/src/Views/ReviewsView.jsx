@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import ReviewPopup from "../Components/ReviewPopup";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import LoginPromptPopup from "../Components/LoginPromptPopup";
 
 export default function ReviewView({ user, loading }) {
     const [isPopupOpen, setIsPopupOpen] = useState(false);
     const {id} = useParams();
     const [reviews, setreviews] = useState([]);
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     console.log(id);
     useEffect(()=>{
         axios.get(`http://127.0.0.1:3000/review/get_reviews/${id}`).then(response=>{
@@ -40,7 +42,13 @@ export default function ReviewView({ user, loading }) {
         <div className="min-h-screen bg-gray-50">
             <Navbar 
                 isRecipePage={false} 
-                onAddClick={() => setIsPopupOpen(true)}
+                onAddClick={() => {
+                    if (!user) {
+                        setShowLoginPrompt(true);
+                    } else {
+                        setIsPopupOpen(true);
+                    }
+                }}
                 user={user}
                 loading={loading}
             />
@@ -50,10 +58,14 @@ export default function ReviewView({ user, loading }) {
             </main>
             <Footer/>
 
+            <LoginPromptPopup 
+                isOpen={showLoginPrompt} 
+                onClose={() => setShowLoginPrompt(false)} 
+            />
             <ReviewPopup 
                 isOpen={isPopupOpen} 
                 onClose={() => setIsPopupOpen(false)} 
-                recipeId = {id}
+                recipeId={id}
                 onSubmit={handleSubmit}
             />
         </div>
