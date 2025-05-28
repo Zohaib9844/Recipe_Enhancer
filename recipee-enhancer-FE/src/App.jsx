@@ -38,7 +38,7 @@ function App() {
         <Route path="/signup" element={<SignupView/>}/>
         <Route path='/addrecipe' element={<AddRecipe user={user} loading={loading}/>}/>
         <Route path='/showrecipe/:id' element={<RecipeDetailView/>}/>
-        <Route path='/reviews/:id' element={<ReviewView/>}/>
+        <Route path='/reviews/:id' element={<ReviewView user={user} loading={loading} />} />
         <Route path="/profile" element={<ProfileView user={user} loading={loading} />} />
         <Route path="/" element={<HomeView user={user} loading={loading}/>}/>
       </Routes>

@@ -6,7 +6,7 @@ import ReviewPopup from "../Components/ReviewPopup";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 
-export default function ReviewView() {
+export default function ReviewView({ user, loading }) {
     const [isPopupOpen, setIsPopupOpen] = useState(false);
     const {id} = useParams();
     const [reviews, setreviews] = useState([]);
@@ -41,6 +41,8 @@ export default function ReviewView() {
             <Navbar 
                 isRecipePage={false} 
                 onAddClick={() => setIsPopupOpen(true)}
+                user={user}
+                loading={loading}
             />
             <main className="container mx-auto px-4 py-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-6">Recipe Reviews</h1>
