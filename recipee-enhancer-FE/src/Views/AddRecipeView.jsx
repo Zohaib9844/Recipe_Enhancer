@@ -4,7 +4,7 @@ import axios from "axios";
 import Navbar from "../Components/HeadFoot/Navbar";
 import Footer from "../Components/HeadFoot/Footer";
 
-export default function AddRecipe() {
+export default function AddRecipe({ user, loading }) {
     const location = useLocation();
     const navigate = useNavigate();
     const BACKEND_URL = 'http://127.0.0.1:3000';
@@ -22,8 +22,14 @@ export default function AddRecipe() {
     
     const [previewImage, setPreviewImage] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [formLoading, setFormLoading] = useState(false);
+
+    useEffect(() => {
+        if (!loading && !user) {
+            navigate('/login');
+        }
+    }, [user, loading, navigate]);
 
     // Check if this is an edit by looking for id in location state
     useEffect(() => {
@@ -38,7 +44,7 @@ export default function AddRecipe() {
     }, [location.state]);
 
     const fetchRecipe = async (id) => {
-        setLoading(true);
+        setFormLoading(true);
         try {
             console.log(`Fetching recipe with ID: ${id}`);
             const response = await axios.get(`${BACKEND_URL}/api/get_recipe/${id}`);
@@ -63,7 +69,7 @@ export default function AddRecipe() {
             console.error("Error fetching recipe:", error);
             setError("Failed to load recipe details");
         } finally {
-            setLoading(false);
+            setFormLoading(false);
         }
     };
 
@@ -94,7 +100,7 @@ export default function AddRecipe() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setFormLoading(true);
         setError("");
         
         try {
@@ -108,13 +114,25 @@ export default function AddRecipe() {
                     formData.append(key, recipe[key]);
                 }
             });
+
+            // Add userId to formData if user is logged in
+            if (user && user._id) {
+                console.log("Adding userId to formData:", user._id);
+                formData.append('userId', user._id);
+            } else {
+                console.error("No user ID available");
+                setError("You must be logged in to add a recipe");
+                setFormLoading(false);
+                return;
+            }
             
             let response;
             
             if (isEditing && recipeId) {
                 console.log(`Updating recipe with ID: ${recipeId}`);
-                // Make sure to use the correct endpoint path
-                response = await axios.put(`${BACKEND_URL}/api/update_recipies/${recipeId}`, formData, {
+                console.log("FormData contents:", Object.fromEntries(formData));
+                
+                response = await axios.put(`${BACKEND_URL}/api/update_recipe/${recipeId}`, formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                     },
@@ -123,6 +141,8 @@ export default function AddRecipe() {
                 console.log("Update response:", response.data);
             } else {
                 console.log("Creating new recipe");
+                console.log("FormData contents:", Object.fromEntries(formData));
+                
                 response = await axios.post(`${BACKEND_URL}/api/add_recipe`, formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
@@ -139,13 +159,13 @@ export default function AddRecipe() {
             console.error("Error saving recipe:", error);
             setError(`Failed to ${isEditing ? 'update' : 'create'} recipe: ${error.message}`);
         } finally {
-            setLoading(false);
+            setFormLoading(false);
         }
     };
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
-            <Navbar isRecipePage={true} />
+            <Navbar isRecipePage={true} user={user} loading={loading} />
             
             <main className="flex-grow container mx-auto px-4 py-8 max-w-3xl">
                 <h1 className="text-3xl font-bold text-gray-800 mb-6">{isEditing ? "Edit Recipe" : "Add New Recipe"}</h1>
@@ -286,10 +306,10 @@ export default function AddRecipe() {
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
-                            className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={formLoading}
+                            className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${formLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Recipe' : 'Save Recipe')}
+                            {formLoading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Recipe' : 'Save Recipe')}
                         </button>
                     </div>
                 </form>

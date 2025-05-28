@@ -36,7 +36,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginView/>}/>
         <Route path="/signup" element={<SignupView/>}/>
-        <Route path='/addrecipe' element={<AddRecipe/>}/>
+        <Route path='/addrecipe' element={<AddRecipe user={user} loading={loading}/>}/>
         <Route path='/showrecipe/:id' element={<RecipeDetailView/>}/>
         <Route path='/reviews/:id' element={<ReviewView/>}/>
         <Route path="/profile" element={<ProfileView user={user} loading={loading} />} />
@@ -45,5 +45,6 @@ function App() {
     </BrowserRouter>
   );
 }
+
 
 export default App

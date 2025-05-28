@@ -7,16 +7,26 @@ const axios = require('axios');
 router.post('/add_recipe', upload.single('r_picture'), async (req, res) => {
     try {
         const filePath = req.file ? req.file.path : null;
+        
+        // Add debug logging
+        console.log("Request body:", req.body);
+        console.log("User ID from request:", req.body.userId);
+        
+        if (!req.body.userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
         const newRecipe = new Recipe({
             ...req.body,
-            userId: req.user?._id,
+            userId: req.body.userId, // Explicitly set userId
             r_picture: filePath
         });
+
         const result = await newRecipe.save();
         res.status(201).json(result);
     } catch (error) {
         console.error('Error uploading file:', error);
-        res.status(500).json({ message: 'Error uploading file' });
+        res.status(500).json({ message: 'Error uploading file', error: error.message });
     }
 });
 
@@ -40,8 +50,11 @@ router.get('/get_recipe/:_id', async (req, res)=>{
     }
 });
 
-router.put('/update_recipies/:_id', upload.single('r_picture'), async (req, res) => {
+router.put('/update_recipe/:_id', upload.single('r_picture'), async (req, res) => {
     try {
+        console.log("Update request body:", req.body);
+        console.log("Update request file:", req.file);
+        
         const updatedRecipe = {
             ...req.body,
         };
@@ -49,14 +62,25 @@ router.put('/update_recipies/:_id', upload.single('r_picture'), async (req, res)
             updatedRecipe.r_picture = req.file.path;
         }
       
-        const result = await Recipe.findByIdAndUpdate(req.params._id, updatedRecipe,  {new:true});
-        if(!result){
-            return res.status(404).json({message: "not found"});
+        const result = await Recipe.findByIdAndUpdate(
+            req.params._id, 
+            updatedRecipe,  
+            { new: true, runValidators: true }  // Add runValidators to ensure validation
+        );
+        
+        if(!result) {
+            console.log("Recipe not found for update");
+            return res.status(404).json({message: "Recipe not found"});
         }
+        
+        console.log("Updated recipe:", result);
         return res.json(result);
     } catch (error) {
         console.error('Error updating recipe:', error);
-        res.status(500).json({ message: 'Error updating recipe' });
+        res.status(500).json({ 
+            message: 'Error updating recipe',
+            error: error.message 
+        });
     }
 });
 
@@ -148,6 +172,16 @@ router.post('/ai_modify/', async (req, res) => {
             error: 'OpenRouter failure',
             details: err.response?.data || err.message,
         });
+    }
+});
+
+router.get('/get_user_recipes/:userId', async (req, res) => {
+    try {
+        const recipes = await Recipe.find({ userId: req.params.userId });
+        res.status(200).json(recipes);
+    } catch(err) {
+        console.error('Error getting user recipes:', err);
+        res.status(400).json({ message: err.message });    
     }
 });
 
